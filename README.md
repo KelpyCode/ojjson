@@ -15,11 +15,17 @@ To install ojjson, you can use the following command:
 ### Deno
 ```sh
 deno install ojjson
+deno add jsr:@kelpy/ojjson # jsr alternative
 ```
 
 ### Node.js
 ```sh
 npm install ojjson
+npx jsr add @kelpy/ojjson # jsr alternative
+```
+### Bun.js
+```sh
+bunx jsr add @kelpy/ojjson
 ```
 
 ### PHP
