@@ -1,6 +1,11 @@
 import ollama from "npm:ollama@0.5.9";
 import zod, { type ZodRawShape } from "npm:zod@3.23.8";
 
+/**
+ * Generate an example object from a Zod schema
+ * @param schema The Zod schema
+ * @returns An example object
+ */
 function generateZodExample<T extends ZodRawShape>(
   schema: zod.ZodObject<T>
 ): T {
@@ -27,12 +32,30 @@ function generateZodExample<T extends ZodRawShape>(
 type _OllamaChatParams = Parameters<typeof ollama.chat>["0"];
 type Message = NonNullable<_OllamaChatParams["messages"]>[0];
 
+/**
+ * Ojjson generator
+ * Allows you to pass in schema instances and generate responses from the model
+ * It will automatically validate the input and output with the schema
+ * @template Input The input schema
+ * @template Output The output schema
+ */
 export class OjjsonGenerator<
   // deno-lint-ignore no-explicit-any
   Input extends zod.ZodObject<any>,
   // deno-lint-ignore no-explicit-any
   Output extends zod.ZodObject<any>
-> {
+  > {
+  /**
+   * Create a new OjjsonGenerator
+   * @param model The model name
+   * @param input The input schema
+   * @param output The output schema
+   * @param options Additional options
+   * @param options.conversionHelp A description how to convert input to export object that will be added to the prompt
+   * @param options.examples Example input and output objects that will be added to the chat history
+   * @param options.maxMessages The maximum number of messages to keep in the chat history
+   * @param options.verbose Log additional information
+   */
   constructor(
     public model: string,
     public input: Input,
@@ -48,13 +71,21 @@ export class OjjsonGenerator<
 
   previousMessages: Message[][] = [];
 
-  addMessage(message: Message[]) {
+  /**
+   * Add a message pair to the chat history
+   * @param message The message pair
+   */
+  #addMessagePair(message: Message[]) {
     this.previousMessages.push(message);
     if (this.previousMessages.length > (this.options.maxMessages ?? 10)) {
       this.previousMessages.shift();
     }
   }
 
+  /**
+   * Verbose log
+   * @param args The arguments to log
+   */
   #log(...args: unknown[]) {
     if (this.options.verbose) {
       console.log('[OjjsonGenerator]',...args);
@@ -112,7 +143,7 @@ export class OjjsonGenerator<
 
       this.#log({ input, output: out });
 
-      this.addMessage([
+      this.#addMessagePair([
         { role: "user", content: JSON.stringify(input) },
         x.message,
       ]);
@@ -154,7 +185,7 @@ export class OjjsonGenerator<
             const out = this.output.parse(JSON.parse(retry.message.content));
 
 
-            this.addMessage([
+            this.#addMessagePair([
               { role: "user", content: JSON.stringify(input) },
               { role: "system", content: x.message.content },
             ]);
@@ -177,6 +208,11 @@ export class OjjsonGenerator<
     }
   }
 
+  /**
+   * Get a human readable error message from a zod exception
+   * @param exception The zod exception
+   * @returns The error message
+   */
   #getErrorMessage(exception: zod.ZodError): string {
     let fixPrompt = '';
     exception.errors.forEach((error) => {
@@ -197,6 +233,9 @@ export class OjjsonGenerator<
     return fixPrompt;
   }
 
+  /**
+   * Get the prompt text
+   */
   #getPromptText() {
     const conversion = this.options.conversionHelp
       ? "\n* A description how to convert input to export object: " +

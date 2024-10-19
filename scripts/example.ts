@@ -1,6 +1,9 @@
 import zod from 'npm:zod';
 import { OjjsonGenerator } from "../mod.ts";
 
+/**
+ * Test function
+ */
 async function test() {
   // const input = zod.object({
   //   resource1: zod.string(),
