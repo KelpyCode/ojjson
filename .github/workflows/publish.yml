@@ -1,0 +1,32 @@
+name: Publish to NPM and JSR
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the package
+        run: deno build --release .
+        
+      - name: Publish to NPM
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14' # or any other supported Node.js version
+        env:
+          npm_token: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd ./npm
+          npm publish --access public
+
+      - name: Publish to JSR
+        run: deno publish --profile release
