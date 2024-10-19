@@ -1,5 +1,6 @@
 // ex. scripts/build_npm.ts
 import { build, emptyDir } from "@deno/dnt";
+import denoConfig from "../deno.json" with {type: "json"}
 
 await emptyDir("./npm");
 
@@ -13,7 +14,7 @@ await build({
   package: {
     // package.json properties
     name: "ojjson",
-    version: Deno.args[0],
+    version: denoConfig.version,
     description: "ollama JSON response generator using zod",
     license: "MIT",
     repository: {
