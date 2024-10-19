@@ -1,6 +1,5 @@
-import ollama from "npm:ollama";
-import zod, { type ZodRawShape } from "npm:zod";
-import { zodToJsonSchema } from "npm:zod-to-json-schema";
+import ollama from "npm:ollama@0.5.9";
+import zod, { type ZodRawShape } from "npm:zod@3.23.8";
 
 function generateZodExample<T extends ZodRawShape>(
   schema: zod.ZodObject<T>
