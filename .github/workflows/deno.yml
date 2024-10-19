@@ -45,8 +45,6 @@ jobs:
         run: deno publish
 
       - name: Publish npm
-      - run: deno --allow-all ./script/dnt.ts
-      - run: cd npm
-      - run: npm publish --provenance --access public
+        run: deno --allow-all ./script/dnt.ts && cd npm && npm publish --provenance --access
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
