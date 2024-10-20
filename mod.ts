@@ -1,36 +1,64 @@
-import ollama from "npm:ollama@0.5.9";
-import zod, { type ZodRawShape } from "npm:zod@3.23.8";
+import ollama, {
+  type Options as OllamaOptions,
+  type Tool as OllamaTool,
+} from "npm:ollama@0.5.9";
+import zod from "npm:zod@3.23.8";
+import { zodToTs, printNode } from "npm:zod-to-ts@1.2.0";
 
-/**
- * Generate an example object from a Zod schema
- * @param schema The Zod schema
- * @returns An example object
- */
-function generateZodExample<T extends ZodRawShape>(
-  schema: zod.ZodObject<T>
-): T {
-  const example: T = {} as T;
-  for (const key in schema.shape) {
-    const shape = schema.shape[key];
-    // deno-lint-ignore no-explicit-any
-    const exAny: any = example as any;
-    if (shape instanceof zod.ZodString) {
-      exAny[key] = "";
-    } else if (shape instanceof zod.ZodNumber) {
-      exAny[key] = 0;
-    } else if (shape instanceof zod.ZodBoolean) {
-      exAny[key] = true;
-    } else if (shape instanceof zod.ZodArray) {
-      exAny[key] = [];
-    } else if (shape instanceof zod.ZodObject) {
-      exAny[key] = generateZodExample(shape);
-    }
-  }
-  return example;
+type ReactiveOrStatic<T> = T | (() => T);
+
+function resolveToStatic<T>(value: ReactiveOrStatic<T>): T {
+  return typeof value === "function" ? (value as () => T)() : value;
 }
 
 type _OllamaChatParams = Parameters<typeof ollama.chat>["0"];
 type Message = NonNullable<_OllamaChatParams["messages"]>[0];
+
+/**
+ * Ojjson options
+ * @template Input The input schema
+ * @template Output The output schema
+ */
+type OjjsonOptions<
+  // deno-lint-ignore no-explicit-any
+  Input extends zod.ZodObject<any>,
+  // deno-lint-ignore no-explicit-any
+  Output extends zod.ZodObject<any>
+> = {
+  /**
+   * A description how to convert input to export object that will be added to the prompt. This help is prepended with `A description on how to convert input to export object:`
+   */
+  conversionHelp?: ReactiveOrStatic<string>;
+  /**
+   * Example input and output objects that will be added to the chat history
+   */
+  examples?: ReactiveOrStatic<
+    Array<{
+      input: zod.infer<Input>;
+      output: zod.infer<Output>;
+    }>
+  >;
+  /**
+   * The maximum number of messages to keep in the chat history
+   */
+  maxMessages?: number;
+  /**
+   * Log additional information
+   */
+  verbose?: boolean;
+  /**
+   * Ollama options
+   */
+  ollamaOptions?: ReactiveOrStatic<OllamaOptions>;
+  /**
+   * Ollama tools
+   */
+  ollamaTools?: ReactiveOrStatic<OllamaTool[]>;
+  /**
+   * Ollama keep alive
+   */
+  ollamaKeepAlive?: ReactiveOrStatic<string | number | undefined>;
+};
 
 /**
  * Ojjson generator
@@ -44,30 +72,21 @@ export class OjjsonGenerator<
   Input extends zod.ZodObject<any>,
   // deno-lint-ignore no-explicit-any
   Output extends zod.ZodObject<any>
-  > {
+> {
   /**
    * Create a new OjjsonGenerator
    * @param model The model name
    * @param input The input schema
    * @param output The output schema
    * @param options Additional options
-   * @param options.conversionHelp A description how to convert input to export object that will be added to the prompt
-   * @param options.examples Example input and output objects that will be added to the chat history
-   * @param options.maxMessages The maximum number of messages to keep in the chat history
-   * @param options.verbose Log additional information
+
    */
   constructor(
     public model: string,
     public input: Input,
     public output: Output,
-    public options: {
-      conversionHelp?: string;
-      examples?: Array<{ input: zod.infer<Input>; output: zod.infer<Output> }>;
-      maxMessages?: number;
-      verbose?: boolean;
-    } = {}
-  ) {
-  }
+    public options: OjjsonOptions<Input, Output> = {}
+  ) {}
 
   previousMessages: Message[][] = [];
 
@@ -88,8 +107,18 @@ export class OjjsonGenerator<
    */
   #log(...args: unknown[]) {
     if (this.options.verbose) {
-      console.log('[OjjsonGenerator]',...args);
+      console.log("[OjjsonGenerator]", ...args);
     }
+  }
+
+  /**
+   * Extract the json from a string
+   * Returns everything between the first `{` and the last `}`
+   */
+  #extractJson(str: string): string {
+    const start = str.indexOf("{");
+    const end = str.lastIndexOf("}");
+    return str.substring(start, end + 1);
   }
 
   /**
@@ -111,7 +140,7 @@ export class OjjsonGenerator<
   ): Promise<zod.infer<Output> | null> {
     const examples: Message[] = [];
 
-    for (const example of this.options.examples ?? []) {
+    for (const example of resolveToStatic(this.options.examples ?? [])) {
       examples.push({ role: "user", content: JSON.stringify(example.input) });
       examples.push({
         role: "system",
@@ -122,6 +151,9 @@ export class OjjsonGenerator<
     const prompt = this.#getPromptText();
 
     const x = await ollama.chat({
+      options: resolveToStatic(this.options.ollamaOptions),
+      tools: resolveToStatic(this.options.ollamaTools),
+      keep_alive: resolveToStatic(this.options.ollamaKeepAlive),
       format: "json",
       model: this.model,
       messages: [
@@ -139,7 +171,9 @@ export class OjjsonGenerator<
     });
 
     try {
-      const out = this.output.parse(JSON.parse(x.message.content));
+      const out = this.output.parse(
+        JSON.parse(this.#extractJson(x.message.content))
+      );
 
       this.#log({ input, output: out });
 
@@ -152,10 +186,12 @@ export class OjjsonGenerator<
       if (e instanceof zod.ZodError) {
         const exception = e;
         for (let i = 0; i < fixTries; i++) {
-          this.#log("zod failed to validate, trying to fix ["+i+"/"+fixTries+"]")
+          this.#log(
+            "zod failed to validate, trying to fix [" + i + "/" + fixTries + "]"
+          );
           let fixPrompt = this.#getErrorMessage(exception);
 
-          fixPrompt += `The output you provided was invalid, please provide a valid output that matches the schema. Those issues occured:\n${fixPrompt}`
+          fixPrompt += `The output you provided was invalid, please provide a valid output that matches the schema. Those issues occured:\n${fixPrompt}`;
 
           const retry = await ollama.chat({
             format: "json",
@@ -172,7 +208,7 @@ export class OjjsonGenerator<
               },
               {
                 role: "system",
-                content: x.message.content,
+                content: this.#extractJson(x.message.content),
               },
               {
                 role: "user",
@@ -182,12 +218,13 @@ export class OjjsonGenerator<
           });
 
           try {
-            const out = this.output.parse(JSON.parse(retry.message.content));
-
+            const out = this.output.parse(
+              JSON.parse(this.#extractJson(retry.message.content))
+            );
 
             this.#addMessagePair([
               { role: "user", content: JSON.stringify(input) },
-              { role: "system", content: x.message.content },
+              { role: "system", content: this.#extractJson(x.message.content) },
             ]);
             return out;
           } catch {
@@ -197,7 +234,9 @@ export class OjjsonGenerator<
 
         // If not fixed yet, retry whole function
         if (retries > 0) {
-          this.#log("Failed to fix, retrying prompt ["+retries+"/"+retries+"]")
+          this.#log(
+            "Failed to fix, retrying prompt [" + retries + "/" + retries + "]"
+          );
           return this.generate(input, retries - 1, fixTries);
         }
 
@@ -214,13 +253,15 @@ export class OjjsonGenerator<
    * @returns The error message
    */
   #getErrorMessage(exception: zod.ZodError): string {
-    let fixPrompt = '';
+    let fixPrompt = "";
     exception.errors.forEach((error) => {
-      if (error.code == 'invalid_union') {
+      if (error.code == "invalid_union") {
         error.unionErrors.forEach((unionError) => {
-          unionError.errors.forEach(err => {
-            if (err.code == 'invalid_type') {
-              fixPrompt += `* ${err.path.join(".")}: Received ${err.received} but expected ${err.expected}, ${err.message}\n`;
+          unionError.errors.forEach((err) => {
+            if (err.code == "invalid_type") {
+              fixPrompt += `* ${err.path.join(".")}: Received ${
+                err.received
+              } but expected ${err.expected}, ${err.message}\n`;
             } else {
               fixPrompt += `* ${err.path.join(".")}: ${err.message}\n`;
             }
@@ -237,27 +278,30 @@ export class OjjsonGenerator<
    * Get the prompt text
    */
   #getPromptText() {
-    const conversion = this.options.conversionHelp
-      ? "\n* A description how to convert input to export object: " +
-        this.options.conversionHelp +
+    const conversionHelp = resolveToStatic(this.options.conversionHelp);
+
+    const conversion = resolveToStatic(conversionHelp)
+      ? "\n* A description on how to convert input to export object: " +
+        conversionHelp +
         "\n\n"
       : "";
     const prompt =
-      `You are an AI that recieves a JSON object and returns only another JSON object.
+      `You are an AI that receives a JSON object and returns only another JSON object.
 * Your input will always be a JSON object that matches the following schema:
-${JSON.stringify(generateZodExample(this.input), null, 2)}
+${printNode(zodToTs(this.input).node)}
 
 * Your output should be a JSON object that matches the following schema:
-${JSON.stringify(generateZodExample(this.output), null, 2)}
+${printNode(zodToTs(this.output).node)}
 ` +
       conversion +
       `
 * You can assume that the input will always be valid and match the schema.
-* You can assume that the input will always be a JSON object.
+* You can assume that the input will always be a JSON object except incase you've provided an invalid output.
+* I will inform you if the output is invalid and you will have to provide a valid output.
 * Stricly follow the schema for the output.
 * Never return anything other than a JSON object.
 * Do not talk to the user.`;
+
     return prompt;
   }
 }
-

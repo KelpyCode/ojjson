@@ -23,8 +23,12 @@
     "jsr:@ts-morph/bootstrap@0.24": "0.24.0",
     "jsr:@ts-morph/common@0.24": "0.24.0",
     "npm:ollama@*": "0.5.9",
+    "npm:ollama@0.5.9": "0.5.9",
     "npm:zod-to-json-schema@*": "3.23.3_zod@3.23.8",
-    "npm:zod@*": "3.23.8"
+    "npm:zod-to-ts@0.1.0": "0.1.0_typescript@4.9.5_zod@3.23.8",
+    "npm:zod-to-ts@1.2.0": "1.2.0_typescript@4.9.5_zod@3.23.8",
+    "npm:zod@*": "3.23.8",
+    "npm:zod@3.23.8": "3.23.8"
   },
   "jsr": {
     "@david/code-block-writer@13.0.3": {
@@ -135,12 +139,29 @@
         "whatwg-fetch"
       ]
     },
+    "typescript@4.9.5": {
+      "integrity": "sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g=="
+    },
     "whatwg-fetch@3.6.20": {
       "integrity": "sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg=="
     },
     "zod-to-json-schema@3.23.3_zod@3.23.8": {
       "integrity": "sha512-TYWChTxKQbRJp5ST22o/Irt9KC5nj7CdBKYB/AosCRdj/wxEMvv4NNaj9XVUHDOIp53ZxArGhnw5HMZziPFjog==",
       "dependencies": [
+        "zod"
+      ]
+    },
+    "zod-to-ts@0.1.0_typescript@4.9.5_zod@3.23.8": {
+      "integrity": "sha512-MBuE4XXoo1L51/zWNHFlFdQiNekt+WinFt/z0uW/VdK5AtxfetYZUrzfQ5SamJIOI+fyKhkBiIgYlBk17AxAvQ==",
+      "dependencies": [
+        "typescript",
+        "zod"
+      ]
+    },
+    "zod-to-ts@1.2.0_typescript@4.9.5_zod@3.23.8": {
+      "integrity": "sha512-x30XE43V+InwGpvTySRNz9kB7qFU8DlyEy7BsSTCHPH1R0QasMmHWZDCzYm6bVXtj/9NNJAZF3jW8rzFvH5OFA==",
+      "dependencies": [
+        "typescript",
         "zod"
       ]
     },
