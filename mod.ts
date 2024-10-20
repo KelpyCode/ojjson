@@ -2,7 +2,7 @@ import ollama, {
   type Options as OllamaOptions,
   type Tool as OllamaTool,
 } from "npm:ollama@0.5.9";
-import zod from "npm:zod@3.23.8";
+import zod from "npm:zod";
 import { zodToTs, printNode } from "npm:zod-to-ts@1.2.0";
 
 type ReactiveOrStatic<T> = T | (() => T);

@@ -6,6 +6,7 @@ await emptyDir("./npm");
 
 await build({
   entryPoints: ["./mod.ts"],
+  testPattern: "**/*.test.{ts,tsx,js,mjs,jsx}",
   outDir: "./npm",
   shims: {
     // see JS docs for overview and more options
