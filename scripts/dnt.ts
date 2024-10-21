@@ -5,7 +5,7 @@ import denoConfig from "../deno.json" with {type: "json"}
 await emptyDir("./npm");
 
 await build({
-  entryPoints: ["./mod.ts"],
+  entryPoints: ["./mod.ts", "./adapter/OllamaAdapter.ts", "./adapter/OpenAIAdapter.ts"],
   testPattern: "**/*.test.{ts,tsx,js,mjs,jsx}",
   outDir: "./npm",
   shims: {

@@ -1,6 +1,9 @@
-import zod, { z } from "npm:zod";
+import zod from "npm:zod";
 import { OjjsonGenerator } from "./mod.ts";
 import { assertEquals, assertExists } from "@std/assert";
+import { OllamaAdapter } from "./adapter/OllamaAdapter.ts";
+
+const ollamaAdapter = new OllamaAdapter("dolphin-mistral");
 
 Deno.test("Data extraction", async (t) => {
   const input = zod.object({
@@ -15,7 +18,7 @@ Deno.test("Data extraction", async (t) => {
     hobbies: zod.array(zod.string()),
   });
 
-  const ojjson = new OjjsonGenerator("dolphin-mistral", input, output, {
+  const ojjson = new OjjsonGenerator(ollamaAdapter, input, output, {
     conversionHelp:
       "The input is a string that contains an introduction of a person. The output should be an object with the name, age, location, occupation and hobbies of the person. You can leave out any information that is not in the introduction by setting it to either 0 or \"\". `hobbies` is a string array.",
     examples: [

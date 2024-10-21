@@ -8,5 +8,5 @@
 *.orig
 *.pyc
 *.swp
-
+*.code-workspace
 npm

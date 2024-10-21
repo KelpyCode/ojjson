@@ -4,6 +4,7 @@ import ollama, {
 } from "npm:ollama@0.5.9";
 import zod from "npm:zod@3.23.8";
 import { zodToTs, printNode } from "npm:zod-to-ts@1.2.0";
+import type { OjjsonAdapter } from "./adapter/adapter.ts";
 
 type ReactiveOrStatic<T> = T | (() => T);
 
@@ -19,7 +20,7 @@ type Message = NonNullable<_OllamaChatParams["messages"]>[0];
  * @template Input The input schema
  * @template Output The output schema
  */
-type OjjsonOptions<
+export type OjjsonOptions<
   // deno-lint-ignore no-explicit-any
   Input extends zod.ZodObject<any>,
   // deno-lint-ignore no-explicit-any
@@ -82,7 +83,7 @@ export class OjjsonGenerator<
 
    */
   constructor(
-    public model: string,
+    public adapter: OjjsonAdapter,
     public input: Input,
     public output: Output,
     public options: OjjsonOptions<Input, Output> = {}
@@ -94,7 +95,7 @@ export class OjjsonGenerator<
    * Add a message pair to the chat history
    * @param message The message pair
    */
-  #addMessagePair(message: Message[]) {
+  addMessagePair(message: Message[]) {
     this.previousMessages.push(message);
     if (this.previousMessages.length > (this.options.maxMessages ?? 10)) {
       this.previousMessages.shift();
@@ -150,13 +151,8 @@ export class OjjsonGenerator<
 
     const prompt = this.#getPromptText();
 
-    const x = await ollama.chat({
-      options: resolveToStatic(this.options.ollamaOptions),
-      tools: resolveToStatic(this.options.ollamaTools),
-      keep_alive: resolveToStatic(this.options.ollamaKeepAlive),
-      format: "json",
-      model: this.model,
-      messages: [
+    const response = await this.adapter.chat(
+      [
         ...examples,
         {
           role: "user",
@@ -167,19 +163,18 @@ export class OjjsonGenerator<
           role: "user",
           content: JSON.stringify(input),
         },
-      ],
-    });
+      ]);
 
     try {
       const out = this.output.parse(
-        JSON.parse(this.#extractJson(x.message.content))
+        JSON.parse(this.#extractJson(response.content))
       );
 
       this.#log({ input, output: out });
 
-      this.#addMessagePair([
+      this.addMessagePair([
         { role: "user", content: JSON.stringify(input) },
-        x.message,
+        response,
       ]);
       return out;
     } catch (e) {
@@ -193,10 +188,7 @@ export class OjjsonGenerator<
 
           fixPrompt += `The output you provided was invalid, please provide a valid output that matches the schema. Those issues occured:\n${fixPrompt}`;
 
-          const retry = await ollama.chat({
-            format: "json",
-            model: this.model,
-            messages: [
+          const retry = await this.adapter.chat([
               ...examples,
               {
                 role: "user",
@@ -208,23 +200,22 @@ export class OjjsonGenerator<
               },
               {
                 role: "system",
-                content: this.#extractJson(x.message.content),
+                content: this.#extractJson(response.content),
               },
               {
                 role: "user",
                 content: fixPrompt,
               },
-            ],
-          });
+            ]);
 
           try {
             const out = this.output.parse(
-              JSON.parse(this.#extractJson(retry.message.content))
+              JSON.parse(this.#extractJson(retry.content))
             );
 
-            this.#addMessagePair([
+            this.addMessagePair([
               { role: "user", content: JSON.stringify(input) },
-              { role: "system", content: this.#extractJson(x.message.content) },
+              { role: "system", content: this.#extractJson(response.content) },
             ]);
             return out;
           } catch {
@@ -288,10 +279,10 @@ export class OjjsonGenerator<
     const prompt =
       `You are an AI that receives a JSON object and returns only another JSON object.
 * Your input will always be a JSON object that matches the following schema:
-${printNode(zodToTs(this.input).node)}
+${printNode(zodToTs(this.input, undefined, { nativeEnums: "union" }).node)}
 
 * Your output should be a JSON object that matches the following schema:
-${printNode(zodToTs(this.output).node)}
+${printNode(zodToTs(this.output, undefined, { nativeEnums: "union" }).node)}
 ` +
       conversion +
       `
