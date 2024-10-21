@@ -53,14 +53,14 @@ import { z } from "zod";
 ### Import required adapter and instantiate it
 #### Ollama
 ```typescript
-import { OllamaAdapter } from "ojjson/adapter/OllamaAdapter.js"
+import { OllamaAdapter } from "ojjson"
 const adapter = new OllamaAdapter("dolphin-mistral");
 ```
 #### OpenAI
 
 ```typescript
 // OpenAI
-import { OpenAIAdapter } from "ojjson/adapter/OpenAIAdapter.js"
+import { OpenAIAdapter } from "ojjson"
 import OpenAI from "openai";
 const openAiInstance = new OpenAI({apiKey: "your-api-key"});
 const adapter = new OpenAIAdapter("dolphin-mistral", openAiInstance);

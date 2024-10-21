@@ -6,6 +6,10 @@ import zod from "npm:zod@3.23.8";
 import { zodToTs, printNode } from "npm:zod-to-ts@1.2.0";
 import type { OjjsonAdapter } from "./adapter/adapter.ts";
 
+export * from "./adapter/adapter.ts";
+export * from "./adapter/OllamaAdapter.ts";
+export * from "./adapter/OpenAIAdapter.ts";
+
 type ReactiveOrStatic<T> = T | (() => T);
 
 function resolveToStatic<T>(value: ReactiveOrStatic<T>): T {
