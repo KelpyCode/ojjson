@@ -141,7 +141,8 @@ export class OjjsonGenerator<
   async generate(
     input: zod.infer<Input>,
     retries = 2,
-    fixTries = 1
+    fixTries = 1,
+    previousMessages?: Message[]
   ): Promise<zod.infer<Output> | null> {
     const examples: Message[] = [];
 
@@ -162,7 +163,7 @@ export class OjjsonGenerator<
           role: "user",
           content: prompt,
         },
-        ...this.previousMessages.flat(),
+        ...((typeof previousMessages !== "undefined") ? previousMessages : this.previousMessages.flat()),
         {
           role: "user",
           content: JSON.stringify(input),
