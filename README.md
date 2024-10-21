@@ -1,6 +1,9 @@
 # ojjson
 
-ojjson is a library designed to facilitate JSON interactions with Ollama, a large language api (LLM). It leverages the power of Zod for schema validation, ensuring that the JSON input and output conform to specified structures.
+ojjson is a library designed to facilitate JSON interactions with Ollama, a large language api (LLM). It leverages the power of **[Zod](https://zod.dev)** for schema validation, ensuring that the JSON input and output conform to specified structures.
+
+
+### **[NPM](https://www.npmjs.com/package/ojjson)** | **[jsr](https://jsr.io/@kelpy/ojjson)** | **[Deno](https://deno.land/x/ojjson)**
 
 ## Features
 
@@ -35,14 +38,39 @@ just kidding lol
 
 ## Usage
 
-Here's a basic example of how to use ojjson:
+Here's a basic example of how to use ojjson.
+
+> **1.1.4** introduces adapters for OpenAI and Ollama, you can use either of them to generate text.
+> The adapters have to be created or imported first, please refer to the example below.
+
+### Import required classes
 
 ```typescript
 import { OjjsonGenerator } from "ojjson";
 import { z } from "zod";
+```
 
-// Define input and output schemas using Zod
+### Import required adapter and instantiate it
+#### Ollama
+```typescript
+import { OllamaAdapter } from "ojjson/adapter/OllamaAdapter.js"
+const adapter = new OllamaAdapter("dolphin-mistral");
+```
+#### OpenAI
 
+```typescript
+// OpenAI
+import { OpenAIAdapter } from "ojjson/adapter/OpenAIAdapter.js"
+import OpenAI from "openai";
+const openAiInstance = new OpenAI({apiKey: "your-api-key"});
+const adapter = new OpenAIAdapter("dolphin-mistral", openAiInstance);
+```
+
+
+
+### Define input and output schemas using zod
+
+```typescript
 const input = zod.object({
   introduction: zod.string(),
 });
@@ -54,9 +82,11 @@ const output = zod.object({
   occupation: zod.string(),
   hobbies: zod.array(zod.string()),
 });
+```
 
+```typescript
 // Create an instance of OjjsonGenerator
-const ojjson = new OjjsonGenerator("dolphin-mistral", input, output, {
+const ojjson = new OjjsonGenerator(adapter, input, output, {
   // Optional configuration
   // How many messages to remember in the chat (default: 10)
   // One message = one pair of user and system messages
@@ -91,21 +121,28 @@ const ojjson = new OjjsonGenerator("dolphin-mistral", input, output, {
     },
   ],
 });
+```
 
-await ojjson.generate(
+### Generate JSON
+
+```typescript
+const response = await ojjson.generate(
   {
     introduction:
       "whats up id like to apply for the job, im Caryll from the US, Washington and I have a dog, i work full time in a gas station",
   },
   // Optional parameters
   // The number of retries to attempt if the conversion fails or fix tries failed (default: 2)
-  /*retries*/ 2,
+  2, // retries
   // The number of tries to attempt fixing the conversion if the conversion fails (default: 2)
-  /*fixTries*/ 2
+  2 // fixTries
 );
 
+console.log(response);
+```
 
-/* Output: */
+### Result
+```json
 {
     name: 'Caryll',
     age: 0,
@@ -113,8 +150,6 @@ await ojjson.generate(
     occupation: 'Gas station employee',
     hobbies: ['owns a dog']
 }
-
-
 ```
 
 
