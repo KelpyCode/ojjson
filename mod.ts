@@ -171,7 +171,7 @@ export class OjjsonGenerator<
         : [
             {
               role: "user",
-              content: JSON.stringify(input),
+              content: JSON.stringify(input, null, 1),
             },
           ]),
     ];
@@ -188,7 +188,7 @@ export class OjjsonGenerator<
       this.#log("---------------------------------");
 
       this.addMessagePair([
-        { role: "user", content: JSON.stringify(input) },
+        { role: "user", content: JSON.stringify(input, null, 1) },
         response,
       ]);
       return out;
@@ -211,7 +211,7 @@ export class OjjsonGenerator<
               },
               {
                 role: "user",
-                content: JSON.stringify(input),
+                content: JSON.stringify(input, null, 1),
               },
               {
                 role: "system",
@@ -229,7 +229,7 @@ export class OjjsonGenerator<
             );
 
             this.addMessagePair([
-              { role: "user", content: JSON.stringify(input) },
+              { role: "user", content: JSON.stringify(input, null, 1) },
               { role: "system", content: this.#extractJson(response.content) },
             ]);
             return out;

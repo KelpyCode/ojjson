@@ -1,6 +1,6 @@
 {
   "name": "@kelpy/ojjson",
-  "version": "1.1.45",
+  "version": "1.1.46",
   "exports": "./mod.ts",
   "tasks": {
     "dev": "deno run --watch main.ts",
