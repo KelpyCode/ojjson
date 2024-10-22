@@ -147,10 +147,10 @@ export class OjjsonGenerator<
     const examples: Message[] = [];
 
     for (const example of resolveToStatic(this.options.examples ?? [])) {
-      examples.push({ role: "user", content: JSON.stringify(example.input) });
+      examples.push({ role: "user", content: JSON.stringify(example.input, null, 1) });
       examples.push({
         role: "system",
-        content: JSON.stringify(example.output),
+        content: JSON.stringify(example.output, null, 1),
       });
     }
 
