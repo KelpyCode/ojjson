@@ -157,16 +157,23 @@ export class OjjsonGenerator<
     const prompt = this.#getPromptText();
 
     const chatMessages = [
-      ...examples,
       {
         role: "user",
         content: prompt,
       },
-      ...((typeof previousMessages !== "undefined") ? previousMessages : this.previousMessages.flat()),
-      ...((typeof previousMessages !== "undefined") ? [] : [{
-        role: "user",
-        content: JSON.stringify(input),
-      }]),
+      ...examples,
+      ...(examples.length > 0 ? [{role: "user", content: "-- END OF EXAMPLES, REAL TASK STARTS NOW --"}] : []),
+      ...(typeof previousMessages !== "undefined"
+        ? previousMessages
+        : this.previousMessages.flat()),
+      ...(typeof previousMessages !== "undefined"
+        ? []
+        : [
+            {
+              role: "user",
+              content: JSON.stringify(input),
+            },
+          ]),
     ];
     const response = await this.adapter.chat(chatMessages);
 
@@ -280,7 +287,7 @@ export class OjjsonGenerator<
     const conversionHelp = resolveToStatic(this.options.conversionHelp);
 
     const conversion = resolveToStatic(conversionHelp)
-      ? "\n* A description on how to convert input to export object: " +
+      ? "\n# A description on how to convert input to export object: " +
         conversionHelp +
         "\n\n"
       : "";
@@ -294,6 +301,7 @@ ${printNode(zodToTs(this.output, undefined, { nativeEnums: "union" }).node)}
 ` +
       conversion +
       `
+# How to treat the task:
 * You can assume that the input will always be valid and match the schema.
 * You can assume that the input will always be a JSON object except incase you've provided an invalid output.
 * I will inform you if the output is invalid and you will have to provide a valid output.
