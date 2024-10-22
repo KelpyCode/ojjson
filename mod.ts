@@ -142,7 +142,7 @@ export class OjjsonGenerator<
     input: zod.infer<Input>,
     retries = 2,
     fixTries = 1,
-    previousMessages?: Message[]
+    previousMessages?: Message[],
   ): Promise<zod.infer<Output> | null> {
     const examples: Message[] = [];
 
@@ -156,26 +156,29 @@ export class OjjsonGenerator<
 
     const prompt = this.#getPromptText();
 
-    const response = await this.adapter.chat(
-      [
-        ...examples,
-        {
-          role: "user",
-          content: prompt,
-        },
-        ...((typeof previousMessages !== "undefined") ? previousMessages : this.previousMessages.flat()),
-        {
-          role: "user",
-          content: JSON.stringify(input),
-        },
-      ]);
+    const chatMessages = [
+      ...examples,
+      {
+        role: "user",
+        content: prompt,
+      },
+      ...((typeof previousMessages !== "undefined") ? previousMessages : this.previousMessages.flat()),
+      ...((typeof previousMessages !== "undefined") ? [] : [{
+        role: "user",
+        content: JSON.stringify(input),
+      }]),
+    ];
+    const response = await this.adapter.chat(chatMessages);
 
     try {
       const out = this.output.parse(
         JSON.parse(this.#extractJson(response.content))
       );
 
-      this.#log({ input, output: out });
+      this.#log("---------------------------------")
+      this.#log(prompt);
+      this.#log({ input, output: out, examples, chatMessages });
+      this.#log("---------------------------------");
 
       this.addMessagePair([
         { role: "user", content: JSON.stringify(input) },
