@@ -3,7 +3,7 @@
 ojjson is a library designed to facilitate JSON interactions with Ollama, a large language api (LLM). It leverages the power of **[Zod](https://zod.dev)** for schema validation, ensuring that the JSON input and output conform to specified structures.
 
 
-### **[NPM](https://www.npmjs.com/package/ojjson)** | **[jsr](https://jsr.io/@kelpy/ojjson)** | **[Deno](https://deno.land/x/ojjson)**
+### **[NPM](https://www.npmjs.com/package/ojjson)** | **[jsr](https://jsr.io/@kelpy/ojjson)** | **[Deno](https://deno.land/x/ojjson)** | **[GitHub](https://github.com/KelpyCode/ojjson)**
 
 ## Features
 

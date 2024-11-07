@@ -12,6 +12,10 @@ export * from "./adapter/OpenAIAdapter.ts";
 
 type ReactiveOrStatic<T> = T | (() => T);
 
+/**
+ * Resolve a reactive or static value
+ * @param value
+ */
 function resolveToStatic<T>(value: ReactiveOrStatic<T>): T {
   return typeof value === "function" ? (value as () => T)() : value;
 }
@@ -84,7 +88,6 @@ export class OjjsonGenerator<
    * @param input The input schema
    * @param output The output schema
    * @param options Additional options
-
    */
   constructor(
     public adapter: OjjsonAdapter,
@@ -93,6 +96,9 @@ export class OjjsonGenerator<
     public options: OjjsonOptions<Input, Output> = {}
   ) {}
 
+  /**
+   * The chat history
+   */
   previousMessages: Message[][] = [];
 
   /**
@@ -135,6 +141,7 @@ export class OjjsonGenerator<
    * @param input The input object
    * @param retries The number of retries to attempt
    * @param fixTries The number of tries to attempt to fix the input
+   * @param previousMessages The previous messages to add to the chat history
    * @returns The output object
    * @throws If all retries fail
    */
@@ -149,7 +156,7 @@ export class OjjsonGenerator<
     for (const example of resolveToStatic(this.options.examples ?? [])) {
       examples.push({ role: "user", content: JSON.stringify(example.input, null, 1) });
       examples.push({
-        role: "system",
+        role: "assistant",
         content: JSON.stringify(example.output, null, 1),
       });
     }
@@ -158,23 +165,22 @@ export class OjjsonGenerator<
 
     const chatMessages = [
       {
-        role: "user",
+        role: "system",
         content: prompt,
       },
-      ...examples,
-      ...(examples.length > 0 ? [{role: "user", content: "-- END OF EXAMPLES, REAL TASK STARTS NOW --"}] : []),
-      ...(typeof previousMessages !== "undefined"
-        ? previousMessages
-        : this.previousMessages.flat()),
-      ...(typeof previousMessages !== "undefined"
+    ].concat(
+      examples,
+      examples.length > 0 ? [{ role: "system", content: "-- END OF EXAMPLES, REAL TASK STARTS NOW --" }] : [],
+      typeof previousMessages !== "undefined" ? previousMessages : this.previousMessages.flat(),
+      typeof previousMessages !== "undefined"
         ? []
         : [
             {
               role: "user",
               content: JSON.stringify(input, null, 1),
             },
-          ]),
-    ];
+          ]
+    );
     const response = await this.adapter.chat(chatMessages);
 
     try {
@@ -201,12 +207,11 @@ export class OjjsonGenerator<
           );
           let fixPrompt = this.#getErrorMessage(exception);
 
-          fixPrompt += `The output you provided was invalid, please provide a valid output that matches the schema. Those issues occured:\n${fixPrompt}`;
+          fixPrompt += `The output you provided was invalid, please provide a valid output that matches the schema. Those issues occurred:\n${fixPrompt}`;
 
-          const retry = await this.adapter.chat([
-              ...examples,
+          const retry = await this.adapter.chat(examples.concat([
               {
-                role: "user",
+                role: "system",
                 content: prompt,
               },
               {
@@ -214,14 +219,14 @@ export class OjjsonGenerator<
                 content: JSON.stringify(input, null, 1),
               },
               {
-                role: "system",
+                role: "assistant",
                 content: this.#extractJson(response.content),
               },
               {
-                role: "user",
+                role: "system",
                 content: fixPrompt,
               },
-            ]);
+            ]));
 
           try {
             const out = this.output.parse(
@@ -230,7 +235,7 @@ export class OjjsonGenerator<
 
             this.addMessagePair([
               { role: "user", content: JSON.stringify(input, null, 1) },
-              { role: "system", content: this.#extractJson(response.content) },
+              { role: "assistant", content: this.#extractJson(response.content) },
             ]);
             return out;
           } catch {
@@ -294,18 +299,23 @@ export class OjjsonGenerator<
     const prompt =
       `You are an AI that receives a JSON object and returns only another JSON object.
 * Your input will always be a JSON object that matches the following schema:
+\`\`\`
 ${printNode(zodToTs(this.input, undefined, { nativeEnums: "union" }).node)}
+\`\`\`
 
 * Your output should be a JSON object that matches the following schema:
+\`\`\`
 ${printNode(zodToTs(this.output, undefined, { nativeEnums: "union" }).node)}
+\`\`\`
+
 ` +
       conversion +
       `
 # How to treat the task:
 * You can assume that the input will always be valid and match the schema.
-* You can assume that the input will always be a JSON object except incase you've provided an invalid output.
+* You can assume that the input will always be a JSON object except in case you've provided an invalid output.
 * I will inform you if the output is invalid and you will have to provide a valid output.
-* Stricly follow the schema for the output.
+* Strictly follow the schema for the output.
 * Never return anything other than a JSON object.
 * Do not talk to the user.`;
 
