@@ -3,7 +3,7 @@ import { OjjsonGenerator } from "./mod.ts";
 import { assertEquals, assertExists } from "@std/assert";
 import { OllamaAdapter } from "./adapter/OllamaAdapter.ts";
 
-const ollamaAdapter = new OllamaAdapter("dolphin-mistral");
+const ollamaAdapter = new OllamaAdapter("llama3.1");
 
 Deno.test("Data extraction", async (t) => {
   const input = zod.object({

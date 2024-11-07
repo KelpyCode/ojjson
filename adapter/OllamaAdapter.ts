@@ -1,11 +1,10 @@
 import { OjjsonAdapter, type OjjsonChatMessage } from "./adapter.ts";
-// import OpenAI from "npm:openai";
 import ollama, {
   type Options as OllamaOptions,
 } from "npm:ollama@0.5.9";
 
 export class OllamaAdapter extends OjjsonAdapter {
-  constructor(model: string, public config?: OllamaOptions) {
+  constructor(model: string, public config?: Partial<OllamaOptions>) {
     super(model);
   }
 
